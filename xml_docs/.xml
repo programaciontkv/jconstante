@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+                    <autorizacion>
+		              <estado></estado>
+		              <numeroAutorizacion></numeroAutorizacion>
+		              <fechaAutorizacion></fechaAutorizacion>
+		              <ambiente></ambiente>
+		              <comprobante><![CDATA[]]></comprobante>
+                    	<mensajes/>
+                    </autorizacion>
