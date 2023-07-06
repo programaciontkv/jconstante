@@ -333,7 +333,7 @@
 
                                     <td id="valores" valign="top" rowspan="11" colspan="<?php echo $col_obs?>">
                                     </td>    
-                                    <td colspan="1" align="right">Subtotal 12%:</td>
+                                    <td colspan="1" id="lbl1" align="right"></td>
                                     <td>
                                         <input style="text-align:right" type="text" class="form-control" id="subtotal12" name="subtotal12" value="<?php echo str_replace(',', '', number_format($nota->ncr_subtotal12, $dec)) ?>" readonly/>
                                         
@@ -526,6 +526,7 @@
       var dec='<?php echo $dec;?>';
       var dcc='<?php echo $dcc;?>';
       var valida_asiento='<?php echo $valida_asiento;?>';
+      var iva_temp=0;
       window.onload = function () {
         cam_motivo();
 
@@ -930,6 +931,8 @@
                                 $('#total_valor').val(parseFloat(dt.fac_total_valor).toFixed(dec));
                                 $('#subtotal').val(parseFloat(dt.fac_subtotal).toFixed(dec));
                                 $('#lista').html(dt.detalle);
+                                $('#lb1').html("SUBTOTAL "+dt.iva+ "%" );
+                                iva_temp =dt.iva;
                                 $('#count_detalle').val(dt.cnt_detalle);
                                 $('#saldo').val(dt.saldo);
                                 $('#lista_encabezado').html('');
@@ -957,7 +960,7 @@
                             return false;
                       }
                     },
-                    url: base_url+"nota_credito/load_producto/"+vl+"/"+inven+"/"+ctr_inv+"/"+emi_id.value,
+                    url: base_url+"nota_credito/load_producto/"+vl+"/"+inven+"/"+ctr_inv+"/"+emi_id.value+"/"+fac_id.value,
                     type: 'JSON',
                     dataType: 'JSON',
                     success: function (dt) {

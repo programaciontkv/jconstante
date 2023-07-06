@@ -80,7 +80,8 @@ class Factura extends CI_Controller {
 		
 		///buscador 
 		if($_POST){
-			$text= trim($this->input->post('txt'));
+			$text= $this->input->post('txt');
+			$ids= $this->input->post('tipo');
 			$f1= $this->input->post('fec1');
 			$f2= $this->input->post('fec2');	
 			$cns_facturas=$this->factura_model->lista_factura_buscador($text,$f1,$f2,$rst_cja->emp_id,$rst_opc->opc_caja);
@@ -91,6 +92,13 @@ class Factura extends CI_Controller {
 			$cns_facturas=$this->factura_model->lista_factura_buscador($text,$f1,$f2,$rst_cja->emp_id,$rst_opc->opc_caja);
 		}
 
+		if (($rst_opc->opc_id)=='85') {
+			$direccion = base_url()."factura/nuevo_masivo/".$this->permisos->opc_id;
+		}else{
+			
+			$direccion = base_url()."factura/nuevo/".$this->permisos->opc_id;
+		}
+
 			$data=array(
 						'permisos'=>$this->permisos,
 						'facturas'=>$cns_facturas,
@@ -98,12 +106,12 @@ class Factura extends CI_Controller {
 						'opc_id'=>$rst_opc->opc_id,
 						'buscar'=>base_url().strtolower($rst_opc->opc_direccion).$rst_opc->opc_id,
 						'txt'=>$text,
+						'direccion'=>$direccion,
 						'fec1'=>$f1,
 						'fec2'=>$f2,
 						'dec'=>$this->configuracion_model->lista_una_configuracion('2'),
 						'cre_aut'=>$this->configuracion_model->lista_una_configuracion('27'),
 						'vendedores'=>$this->vendedor_model->lista_vendedores_estado('1'),
-
 			);
 			$this->load->view('layout/header',$this->menus());
 			$this->load->view('layout/menu',$this->menus());
@@ -148,7 +156,21 @@ class Factura extends CI_Controller {
 				$etq='';
 			}else{
 				$etq='readonly';
-			}		
+			}	
+			
+			
+			$rst_iva= $this->configuracion_model->lista_una_configuracion('30');
+
+			$redu_iva = $rst_iva->con_valor;
+			$por_iva  = $rst_iva->con_valor2;
+			$cod_iva  = $rst_iva->con_valor3;
+
+			if($redu_iva==0){          
+			$t_iva= $por_iva;
+			}else{
+			$t_iva= 12;
+			}
+
 			$this->load->view('layout/header',$this->menus());
 			$this->load->view('layout/menu',$this->menus());
 			$mensaje='Para una mejor experiencia gire la pantalla de su celular';
@@ -170,6 +192,7 @@ class Factura extends CI_Controller {
 						'titulo'=>ucfirst(strtolower($rst_cja->emi_nombre)).' '.ucfirst(strtolower($rst_cja->cja_nombre)),
 						'cancelar'=>base_url().strtolower($rst_opc->opc_direccion).$rst_opc->opc_id,
 						'mensaje'=> $mensaje,
+						't_iva'=>$t_iva,
 						'sri'=> $rst_cja->cja_envio_sri,
 						'factura'=> (object) array(
 											'fac_fecha_emision'=>date('Y-m-d'),
@@ -214,6 +237,123 @@ class Factura extends CI_Controller {
 			}else{
 				$this->load->view('factura/form_movil',$data);
 			}
+			
+			
+			$modulo=array('modulo'=>'factura');
+			$this->load->view('layout/footer',$modulo);
+		}else{
+			redirect(base_url().'inicio');
+		}
+	}
+
+
+	public function nuevo_masivo($opc_id){
+		
+
+		$permisos=$this->backend_model->get_permisos($opc_id,$this->session->userdata('s_rol'));
+
+		$rst_opc=$this->opcion_model->lista_una_opcion($opc_id);
+		$rst_cja=$this->caja_model->lista_una_caja($rst_opc->opc_caja);
+		if($permisos->rop_insertar){
+			//valida cuentas asientos completos
+			$conf_as=$this->configuracion_model->lista_una_configuracion('4');
+			$valida_asiento=0;
+			if($conf_as->con_valor==0){
+				$cuentas=$this->configuracion_cuentas_model->lista_configuracion_cuenta_completa($rst_cja->emi_id);
+				if(!empty($cuentas)){
+					$valida_asiento=1;
+				}
+			}
+
+			$usu_id=$this->session->userdata('s_idusuario');
+			$rst_vnd=$this->vendedor_model->lista_un_vendedor_2($usu_id);
+			
+			if(empty($rst_vnd)){
+				$vnd='';
+			}else{
+				$vnd=$rst_vnd->vnd_id;
+				if ($vnd==1) {
+					$vnd="";
+				}
+			}
+
+			$rst_iva= $this->configuracion_model->lista_una_configuracion('30');
+
+			$redu_iva = $rst_iva->con_valor;
+			$por_iva  = $rst_iva->con_valor2;
+			$cod_iva  = $rst_iva->con_valor3;
+
+			if($redu_iva==0){          
+			$t_iva= $por_iva;
+			}else{
+			$t_iva= 12;
+			}
+			
+			$this->load->view('layout/header',$this->menus());
+			$this->load->view('layout/menu',$this->menus());
+			$mensaje='Para una mejor experiencia gire la pantalla de su celular';
+			$data=array(
+						'ctrl_inv'=>$this->configuracion_model->lista_una_configuracion('6'),
+						'dec'=>$this->configuracion_model->lista_una_configuracion('2'),
+						'dcc'=>$this->configuracion_model->lista_una_configuracion('1'),
+						'inven'=>$this->configuracion_model->lista_una_configuracion('3'),
+						'cprec'=>$this->configuracion_model->lista_una_configuracion('20'),
+						'cdesc'=>$this->configuracion_model->lista_una_configuracion('21'),
+						'm_pag'=>$this->configuracion_model->lista_una_configuracion('22'),
+						'm_prec'=>$this->configuracion_model->lista_una_configuracion('25'),
+						'estados'=>$this->estado_model->lista_estados_modulo($this->permisos->opc_id),
+						'formas_pago'=>$this->forma_pago_model->lista_formas_pago_estado('1'),
+						'cns_productos'=>$this->factura_model->lista_productos('1'),
+						'usuario'=>$this->session->userdata('s_idusuario'),
+						'vendedores'=>$this->vendedor_model->lista_vendedores_estado('1'),
+						'cns_clientes'=>$this->cliente_model->lista_clientes_estado('1'),
+						'titulo'=>ucfirst(strtolower($rst_cja->emi_nombre)).' '.ucfirst(strtolower($rst_cja->cja_nombre)),
+						'cancelar'=>base_url().strtolower($rst_opc->opc_direccion).$rst_opc->opc_id,
+						'mensaje'=> $mensaje,
+						't_iva'=>$t_iva,
+						'factura'=> (object) array(
+											'fac_fecha_emision'=>date('Y-m-d'),
+											'fac_numero'=>'',
+					                        'cli_id'=>'',
+					                        'vnd_id'=>$vnd,
+					                        'fac_identificacion'=>'',
+					                        'fac_nombre'=>'',
+					                        'fac_direccion'=>'',
+					                        'fac_telefono'=>'',
+					                        'fac_email'=>'',
+					                        //'cli_parroquia'=>'',
+					                        'cli_canton'=>'Quito',
+					                        'cli_pais'=>'Ecuador',
+					                        'fac_id'=>'',
+					                        'fac_observaciones'=>'',
+					                        'fac_subtotal12'=>'0',
+					                        'fac_subtotal0'=>'0',
+					                        'fac_subtotal_ex_iva'=>'0',
+					                        'fac_subtotal_no_iva'=>'0',
+					                        'fac_subtotal'=>'0',
+					                        'fac_total_descuento'=>'0',
+					                        'fac_total_ice'=>'0',
+					                        'fac_total_iva'=>'0',
+					                        'fac_total_propina'=>'0',
+					                        'fac_total_valor'=>'0',
+					                        'emp_id'=>$rst_cja->emp_id,
+					                        'emi_id'=>$rst_cja->emi_id,
+					                        'cja_id'=>$rst_cja->cja_id,
+					                        'ped_id'=>'0',
+					                        
+										),
+						'cns_det'=>'',
+						'cns_pag'=>'',
+						'action'=>base_url().'factura/guardar_masivo/'.$opc_id,
+						'valida_asiento'=>$valida_asiento,
+						);
+			$we =  intval($this->session->userdata('s_we'));
+			$this->load->view('factura/form_masivo',$data);
+			// if($we>=760){
+				
+			// }else{
+			// 	//$this->load->view('factura/form_movil',$data);
+			// }
 			
 			
 			$modulo=array('modulo'=>'factura');
@@ -549,11 +689,7 @@ class Factura extends CI_Controller {
 					            case 8:
 					               // 'Nota de Credito';
 					                $cts = $nc;
-					                break; 
-					            case 9:
-					               // 'Credito';
-					                $cts = 0;
-					                break;   
+					                break;    
 					        }
 					        $rst_cli=$this->cliente_model->lista_un_cliente($cli_id);
 					        $ccli=$this->configuracion_cuentas_model->lista_una_configuracion_cuenta('1',$emi_id);
@@ -586,8 +722,7 @@ class Factura extends CI_Controller {
 										'cta_estado'=>'1',
 										'pln_id'=>$pln_id,
 										'cta_banco'=>$pln_codigo,
-										'pag_id'=>$pag_id,
-										'emp_id'=>$emp_id,
+										'pag_id'=>$pag_id
 								    );
 								
 							$cta_id=$this->ctasxcobrar_model->insert($ctaxcob);
@@ -640,8 +775,7 @@ class Factura extends CI_Controller {
 								'cta_estado'=>'1',
 								'pln_id'=>$pln_id,
 								'cta_banco'=>$pln_codigo,
-								'pag_id'=>$pag_id,
-								'emp_id'=>$emp_id,
+								'pag_id'=>$pag_id
 						    );
 							
 						    $cta_id=$this->ctasxcobrar_model->insert($ctaxcob);
@@ -708,6 +842,7 @@ class Factura extends CI_Controller {
 		        	$this->asientos_pagos($fac_id);
 		        }
 
+		        	
 				$rst_opc=$this->opcion_model->lista_una_opcion($opc_id);
 				// redirect(base_url().strtolower($rst_opc->opc_direccion).$opc_id);
 				redirect(base_url().'factura/show_ftalon/'. $fac_id.'/'.$opc_id);
@@ -720,6 +855,468 @@ class Factura extends CI_Controller {
 		}else{
 			$this->nuevo($opc_id);
 		}	
+
+	}
+
+
+	public function guardar_masivo($opc_id){
+		$o=0;
+		$count_cliente = $this->input->post('count_cliente');
+		while ($o < $count_cliente) {
+			$o++;
+			$conf = $this->configuracion_model->lista_una_configuracion('2');
+			$dec = $conf->con_valor;
+
+			$conf_as = $this->configuracion_model->lista_una_configuracion('4');
+
+			$fac_fecha_emision = $this->input->post('fac_fecha_emision');
+			$vnd_id = $this->input->post('vnd_id');
+			$identificacion = $this->input->post("identificacion$o");
+			$nombre = $this->input->post("nombre$o");
+			$cli_id = $this->input->post("cli_id$o");
+			$pasaporte = $this->input->post('pas_aux');
+			$direccion_cliente = $this->input->post("direccion_cliente$o");
+			$telefono_cliente = $this->input->post("telefono_cliente$o");
+			$email_cliente = $this->input->post("email_cliente$o");
+			$cli_ciudad = $this->input->post("cli_ciudad$o");
+			$cli_pais = $this->input->post("cli_pais$o");
+			$observacion = $this->input->post('observacion');
+			$subtotal12 = $this->input->post('subtotal12');
+			$subtotal0 = $this->input->post('subtotal0');
+			$subtotalex = $this->input->post('subtotalex');
+			$subtotalno = $this->input->post('subtotalno');
+			$subtotal = $this->input->post('subtotal');
+			$total_descuento = $this->input->post('total_descuento');
+			$total_ice = $this->input->post('total_ice');
+			$total_iva = $this->input->post('total_iva');
+			$total_propina = $this->input->post('total_propina');
+			$total_valor = $this->input->post('total_valor');
+			$emp_id = $this->input->post('emp_id');
+			$emi_id = $this->input->post('emi_id');
+			$cja_id = $this->input->post('cja_id');
+			$ped_id = $this->input->post('ped_id');
+			$count_det = $this->input->post('count_detalle');
+			$count_pag = $this->input->post('count_pagos');
+
+			
+			$this->form_validation->set_rules('vnd_id', 'Vendedor', 'required');
+			$this->form_validation->set_rules('total_valor', 'Total Valor', 'required');
+			if ($this->form_validation->run()) {
+
+				$dat_cl=array(
+					'cli_calle_prin'=>$direccion_cliente,
+					'cli_email'=>$email_cliente,
+					'cli_telefono'=>$telefono_cliente,
+					'cli_canton'=>$cli_ciudad,
+					'cli_pais'=>$cli_pais,
+					//'cli_parroquia'=>$cli_parroquia,
+				); 
+			$this->cliente_model->update($cli_id,$dat_cl);	
+				
+				///secuencial de Factura
+				$rst_pto = $this->emisor_model->lista_un_emisor($emi_id);
+				if ($rst_pto->emi_cod_punto_emision > 99) {
+					$ems = $rst_pto->emi_cod_punto_emision;
+				} else if ($rst_pto->emi_cod_punto_emision < 100 && $rst_pto->emi_cod_punto_emision > 9) {
+					$ems = '0' . $rst_pto->emi_cod_punto_emision;
+				} else {
+					$ems = '00' . $rst_pto->emi_cod_punto_emision;
+				}
+
+				$rst_cja = $this->caja_model->lista_una_caja($cja_id);
+				if ($rst_cja->cja_codigo > 99) {
+					$caja = $rst_cja->cja_codigo;
+				} else if ($rst_cja->cja_codigo < 100 && $rst_cja->cja_codigo > 9) {
+					$caja = '0' . $rst_cja->cja_codigo;
+				} else {
+					$caja = '00' . $rst_cja->cja_codigo;
+				}
+
+
+				$rst_sec = $this->factura_model->lista_secuencial_documento($emi_id, $cja_id);
+				if (empty($rst_sec)) {
+					$sec = $rst_cja->cja_sec_factura;
+				} else {
+					$sc = explode('-', $rst_sec->fac_numero);
+					$sec = ($sc[2] + 1);
+				}
+				if ($sec >= 0 && $sec < 10) {
+					$tx = '00000000';
+				} else if ($sec >= 10 && $sec < 100) {
+					$tx = '0000000';
+				} else if ($sec >= 100 && $sec < 1000) {
+					$tx = '000000';
+				} else if ($sec >= 1000 && $sec < 10000) {
+					$tx = '00000';
+				} else if ($sec >= 10000 && $sec < 100000) {
+					$tx = '0000';
+				} else if ($sec >= 100000 && $sec < 1000000) {
+					$tx = '000';
+				} else if ($sec >= 1000000 && $sec < 10000000) {
+					$tx = '00';
+				} else if ($sec >= 10000000 && $sec < 100000000) {
+					$tx = '0';
+				} else if ($sec >= 100000000 && $sec < 1000000000) {
+					$tx = '';
+				}
+				$fac_numero = $ems . '-' . $caja . '-' . $tx . $sec;
+
+				$clave_acceso = $this->clave_acceso($cja_id, $fac_numero, $fac_fecha_emision);
+
+				$data = array(
+					'emp_id' => $emp_id,
+					'emi_id' => $emi_id,
+					'cja_id' => $cja_id,
+					'cli_id' => $cli_id,
+					'vnd_id' => $vnd_id,
+					'ped_id' => $ped_id,
+					'fac_fecha_emision' => $fac_fecha_emision,
+					'fac_numero' => $fac_numero,
+					'fac_nombre' => $nombre,
+					'fac_identificacion' => $identificacion,
+					'fac_email' => $email_cliente,
+					'fac_direccion' => $direccion_cliente,
+					'fac_subtotal12' => $subtotal12,
+					'fac_subtotal0' => $subtotal0,
+					'fac_subtotal_ex_iva' => $subtotalex,
+					'fac_subtotal_no_iva' => $subtotalno,
+					'fac_total_descuento' => $total_descuento,
+					'fac_total_ice' => $total_ice,
+					'fac_total_iva' => $total_iva,
+					'fac_total_propina' => $total_propina,
+					'fac_telefono' => $telefono_cliente,
+					'fac_observaciones' => preg_replace("/[\r\n|\n|\r]+/", " ", $observacion),
+					'fac_total_valor' => $total_valor,
+					'fac_subtotal' => $subtotal,
+					'fac_clave_acceso' => $clave_acceso,
+					'fac_estado' => '4'
+				);
+
+
+				// if($this->factura_model->insert($data)){
+				$fac_id = $this->factura_model->insert($data);
+				if (!empty($fac_id)) {
+					$n = 0;
+					while ($n < $count_det) {
+						$n++;
+						
+						if ($this->input->post("pro_aux$n") != '') {
+							
+							$pro_id = $this->input->post("pro_aux$n");
+							$dfc_codigo = $this->input->post("pro_descripcion$n");
+							$dfc_cod_aux = $this->input->post("pro_descripcion$n");
+							$dfc_cantidad = $this->input->post("cantidad$n");
+							$dfc_descripcion = $this->input->post("pro_referencia$n");
+							$dfc_precio_unit = $this->input->post("pro_precio$n");
+							$dfc_porcentaje_descuento = $this->input->post("descuento$n");
+							$dfc_val_descuento = $this->input->post("descuent$n");
+							$dfc_precio_total = $this->input->post("valor_total$n");
+							$dfc_iva = $this->input->post("iva$n");
+							$dfc_ice = $this->input->post("ice$n");
+							$dfc_p_ice = $this->input->post("ice_p$n");
+							$dfc_cod_ice = $this->input->post("ice_cod$n");
+							$dt_det = array(
+								'fac_id' => $fac_id,
+								'pro_id' => $pro_id,
+								'dfc_codigo' => $dfc_codigo,
+								'dfc_cod_aux' => $dfc_cod_aux,
+								'dfc_cantidad' => $dfc_cantidad,
+								'dfc_descripcion' => $dfc_descripcion,
+								'dfc_precio_unit' => $dfc_precio_unit,
+								'dfc_porcentaje_descuento' => $dfc_porcentaje_descuento,
+								'dfc_val_descuento' => $dfc_val_descuento,
+								'dfc_precio_total' => $dfc_precio_total,
+								'dfc_iva' => $dfc_iva,
+								'dfc_ice' => 0,
+								'dfc_p_ice' => 0,
+								'dfc_cod_ice' => 0,
+							);
+							
+							$this->factura_model->insert_detalle($dt_det);
+						}
+					}
+
+					$m = 0;
+					while ($m < $count_pag) {
+						$m++;
+						if ($this->input->post("pag_descripcion$m") != '') {
+							$pag_tipo = $this->input->post("pag_tipo$m");
+							$pag_forma = $this->input->post("pag_forma$m");
+							$pag_cant = $this->input->post("pag_cantidad$m");
+							$pag_plazo = $this->input->post("pag_plazo$m");
+							$pag_banco = $this->input->post("pag_banco$m");
+							$pag_tarjeta = $this->input->post("pag_tarjeta$m");
+							$chq_numero = $this->input->post("pag_documento$m");
+							$pag_id_chq = $this->input->post("id_nota_credito$m");
+							if ($pag_tipo == '9' || $pag_tipo == '7') {
+								$rst_plz = $this->bancos_tarjetas_model->lista_un_banco_tarjeta($pag_plazo);
+								$nf = strtotime("+$rst_plz->btr_dias day", strtotime($fac_fecha_emision));
+								$pag_plazo = $rst_plz->btr_dias;
+								$fec = date('Y-m-d', $nf);
+							} else {
+								$fec = $fac_fecha_emision;
+							}
+
+							if (empty($pag_plazo)) {
+								$pag_plazo = '0';
+							}
+
+							$dt_det = array(
+								'com_id' => $fac_id,
+								'pag_fecha_v' => $fec,
+								'pag_forma' => $pag_forma,
+								'pag_cant' => $pag_cant,
+								'pag_banco' => $pag_banco,
+								'pag_tarjeta' => $pag_tarjeta,
+								'pag_contado' => $pag_plazo,
+								'chq_numero' => $chq_numero,
+								'pag_id_chq' => $pag_id_chq,
+								'pag_estado' => '1',
+							);
+
+							$pag_id = $this->factura_model->insert_pagos($dt_det);
+
+							$fp = $this->forma_pago_model->lista_una_forma_pago_id($pag_forma);
+
+							if ($conf_as->con_valor == 0) {
+								$cli_as = 1;
+								$tc = 76;
+								$td = 77;
+								$ch = 78;
+								$ef = 79;
+								$rt = 80;
+								$nc = 81;
+								$ct = 82;
+								$bn = 83;
+								switch ($fp->fpg_tipo) {
+									case 1:
+										// 'TARJETA DE CREDITO';
+										$cts = $tc;
+										break;
+									case 2:
+										// 'TARJETA DE DEBITO';
+										$cts = $td;
+										break;
+									case 3:
+										// 'CHEQUE';
+										$cts = $ch;
+										break;
+									case 4:
+										//'EFECTIVO';
+										$cts = $ef;
+										break;
+									case 5:
+										// 'CERTIFICADOS';
+										$cts = $ct;
+										break;
+									case 6:
+										// 'TRANSFERENCIAS';
+										$cts = $bn;
+										break;
+									case 7:
+										// 'RETENCION';
+										$cts = $rt;
+										break;
+									case 8:
+										// 'Nota de Credito';
+										$cts = $nc;
+										break;
+									case 9:
+										// 'Credito';
+										$cts = 0;
+										break;
+								}
+								$rst_cli = $this->cliente_model->lista_un_cliente($cli_id);
+								$ccli = $this->configuracion_cuentas_model->lista_una_configuracion_cuenta('1', $emi_id);
+								$ccex = $this->configuracion_cuentas_model->lista_una_configuracion_cuenta('2', $emi_id);
+								$cban = $this->configuracion_cuentas_model->lista_una_configuracion_cuenta($cts, $emi_id);
+								if ($rst_cli->cli_tipo_cliente == 0) {
+									$pln_id = $ccli->pln_id;
+								} else {
+									$pln_id = $ccex->pln_id;
+								}
+
+								$pln_codigo = $cban->pln_codigo;
+							} else {
+								$pln_id = 0;
+								$pln_codigo = '';
+							}
+
+							if ($pag_tipo == '8') {
+								///ctasxcobrar 
+								///nota de credito
+								$ctaxcob = array(
+									'com_id' => $fac_id,
+									'cta_fecha_pago' => $fec,
+									'cta_forma_pago' => $pag_tipo,
+									'num_documento' => $chq_numero,
+									'cta_concepto' => 'ABONO DESDE FACTURA',
+									'cta_monto' => $pag_cant,
+									'cta_fecha' => date('Y-m-d'),
+									'chq_id' => $pag_id_chq,
+									'cta_estado' => '1',
+									'pln_id' => $pln_id,
+									'cta_banco' => $pln_codigo,
+									'pag_id' => $pag_id,
+									'emp_id' => $emp_id,
+								);
+
+								$cta_id = $this->ctasxcobrar_model->insert($ctaxcob);
+
+								///modificar estado cheque
+								$chq_cobro = $this->ctasxcobrar_model->lista_ctasxcobrar_notcre($pag_id_chq);
+								$cheque = $this->cheque_model->lista_un_cheque($pag_id_chq);
+								$chq_monto = $cheque->chq_monto;
+								$chq_saldo = round($chq_monto, $dec) - round($chq_cobro->sum, $dec);
+								if ($chq_saldo > 0) {
+									$chq_estado = 8;
+								} else {
+									$chq_estado = 9;
+								}
+								$data_chq = array(
+									'chq_cobro' => $chq_cobro->sum,
+									'chq_estado' => $chq_estado,
+								);
+								$this->cheque_model->update($pag_id_chq, $data_chq);
+							} else if ($pag_tipo != '9') {
+								///control de cobros
+
+								$bnc = $this->bancos_tarjetas_model->lista_un_banco_tarjeta($fp->fpg_banco);
+								$data_chq = array(
+									'emp_id' => $emp_id,
+									'cli_id' => $cli_id,
+									'chq_recepcion' => $fac_fecha_emision,
+									'chq_fecha' => $fac_fecha_emision,
+									'chq_tipo_doc' => $pag_tipo,
+									'chq_nombre' => $fp->fpg_descripcion,
+									'chq_concepto' => 'ABONO DESDE FACTURA',
+									//'chq_banco' => $bnc->btr_descripcion,
+									'chq_numero' => $chq_numero,
+									'chq_monto' => $pag_cant,
+									'chq_estado' => '9',
+									'chq_estado_cheque' => '11'
+								);
+								$chq_id = $this->cheque_model->insert($data_chq);
+
+								///ctasxcobrar
+								$ctaxcob = array(
+									'com_id' => $fac_id,
+									'cta_fecha_pago' => $fec,
+									'cta_forma_pago' => $pag_tipo,
+									'num_documento' => $chq_numero,
+									'cta_concepto' => 'ABONO DESDE FACTURA',
+									'cta_monto' => $pag_cant,
+									'cta_fecha' => date('Y-m-d'),
+									'chq_id' => $chq_id,
+									'cta_estado' => '1',
+									'pln_id' => $pln_id,
+									'cta_banco' => $pln_codigo,
+									'pag_id' => $pag_id,
+									'emp_id' => $emp_id,
+								);
+
+								$cta_id = $this->ctasxcobrar_model->insert($ctaxcob);
+
+							}
+						}
+					}
+
+					//movimientos
+					$inven = $this->configuracion_model->lista_una_configuracion('3');
+					if ($inven->con_valor == 0) {
+						$k = 0;
+						while ($k < $count_det) {
+							$k++;
+							if ($this->input->post("pro_aux$k") != '') {
+								$pro_id = $this->input->post("pro_aux$k");
+								$dfc_cantidad = $this->input->post("cantidad$k");
+								$mov_cost_unit = $this->input->post("mov_cost_unit$k");
+								$mov_cost_tot = $this->input->post("mov_cost_tot$k");
+								$rst_ids = $this->producto_comercial_model->lista_un_producto($pro_id);
+								$p_ids = $rst_ids->ids;
+								if ($p_ids != 79 && $p_ids != 80) {
+									$fec_mov = date('Y-m-d');
+									$hor_mov = date('H:i:s');
+									$dt_movimientos = array(
+										'pro_id' => $pro_id,
+										'trs_id' => '25',
+										'cli_id' => $cli_id,
+										'bod_id' => $emi_id,
+										'mov_documento' => $fac_numero,
+										'mov_num_factura' => $fac_numero,
+										'mov_fecha_trans' => $fac_fecha_emision,
+										'mov_fecha_registro' => $fec_mov,
+										'mov_hora_registro' => $hor_mov,
+										'mov_cantidad' => $dfc_cantidad,
+										'mov_fecha_entrega' => $fec_mov,
+										'mov_val_unit' => $mov_cost_unit,
+										'mov_val_tot' => $mov_cost_tot,
+										'emp_id' => $emp_id,
+										'mov_usuario' => strtoupper($this->session->userdata('s_usuario')),
+									);
+
+									$this->factura_model->insert_movimientos($dt_movimientos);
+								}
+							}
+
+						}
+					}
+					//generar_xml
+					///enviari sri 1 y no enviar 2 
+					if ($rst_cja->cja_envio_sri == 1) {
+						$this->generar_xml($fac_id,0);
+					} else {
+						$data = array(
+							'fac_estado' => '6',
+							'fac_estado_correo' => 'ENVIADO'
+						);
+						$this->factura_model->update($fac_id, $data);
+					}
+
+
+					//genera asientos
+					if ($conf_as->con_valor == 0) {
+						$this->asientos($fac_id);
+						$this->asientos_pagos($fac_id);
+					}
+
+					$data_aud = array(
+						'usu_id' => $this->session->userdata('s_idusuario'),
+						'adt_date' => date('Y-m-d'),
+						'adt_hour' => date('H:i'),
+						'adt_modulo' => 'FACTURA',
+						'adt_accion' => 'INSERTAR',
+						'adt_campo' => json_encode($this->input->post()),
+						'adt_ip' => $_SERVER['REMOTE_ADDR'],
+						'adt_documento' => $fac_numero,
+						'usu_login' => $this->session->userdata('s_usuario'),
+					);
+					$this->auditoria_model->insert($data_aud);
+
+
+
+					$rst_opc = $this->opcion_model->lista_una_opcion($opc_id);
+					// redirect(base_url().strtolower($rst_opc->opc_direccion).$opc_id);
+					//redirect(base_url() . 'factura/show_ftalon/' . $fac_id . '/' . $opc_id);
+					//
+					//redirect(base_url().'factura/show_frame/'. $fac_id.'/'.$opc_id);
+					$etiqueta='Factura.pdf';
+					$this->show_pdf($fac_id,$opc_id,3,$etiqueta);
+
+				} else {
+					$this->session->set_flashdata('error', 'No se pudo guardar');
+					redirect(base_url() . 'factura/nuevo_masivo/' . $opc_id);
+				}
+			} else {
+				$this->nuevo($opc_id);
+			}
+
+		}
+		if($o==$count_cliente){
+			redirect(base_url() . 'factura_masiva_empresa1_local1_caja1/'. $opc_id);
+		}
+		
+		
 
 	}
 
@@ -1389,6 +1986,8 @@ public function buscar_cliente($txt){
 
 	public function load_producto($id,$inven,$ctr_inv,$fpag,$emi,$lang){
 
+		$id = $this->input->post('producto');
+
 		$rst=$this->producto_comercial_model->lista_un_producto_cod($id);
 		if(empty($rst)){
 			$rst=$this->producto_comercial_model->lista_un_producto($id);
@@ -1666,12 +2265,14 @@ public function buscar_cliente($txt){
 		$vencido='';
 		$vencer='';
 		$pagado='';
+		$fec1=date('Y-m-d');
+		$fec2=date('Y-m-d');
 
 		if($_POST){
 			$text= trim($this->input->post('txt'));
 			$fec1= $this->input->post('fec1');
 			$fec2= $this->input->post('fec2');
-			// if(!empty($this->input->post('vencido')) || !empty($this->input->post('vencer')) || !empty($this->input->post('pagado')) ){
+			// if(($this->input->post('vencido') !='') || ($this->input->post('vencer') !='' ) || ($this->input->post('pagado') !='') ){
 			// 	$vencido=$this->input->post('vencido');
 			// 	$vencer=$this->input->post('vencer');
 			// 	$pagado=$this->input->post('pagado');
@@ -1682,6 +2283,7 @@ public function buscar_cliente($txt){
 			$text='';
 			
 		}
+
 		$permisos=$this->backend_model->get_permisos($opc_id,$this->session->userdata('s_rol'));
 		$rst_opc=$this->opcion_model->lista_una_opcion($opc_id);
 		$rst_cja=$this->caja_model->lista_una_caja($rst_opc->opc_caja);
@@ -1692,16 +2294,16 @@ public function buscar_cliente($txt){
 					'regresar'=>base_url().strtolower($rst_opc->opc_direccion).$rst_opc->opc_id,
 					'direccion'=>"factura/show_pdf/$id/$opc_id/0/$etiqueta",
 					'fec1'=>$fec1,
-					'fec2'=>$fec2,
-					'txt'=>$text,
-					'estado'=>'',
-					'tipo'=>'',
-					'vencer'=>$vencer,
-					'vencido'=>$vencido,
-					'pagado'=>$pagado,
-					'familia'=>'',
-					'tip'=>'',
-					'detalle'=>'',
+                    'fec2'=>$fec2,
+                    'txt'=>$text,
+                    'estado'=>'',
+                    'tipo'=>'',
+                    'vencer'=>$vencer,
+                    'vencido'=>$vencido,
+                    'pagado'=>$pagado,
+                    'familia'=>'',
+                    'tip'=>'',
+                    'detalle'=>'',
 				);
 			$this->load->view('layout/header',$this->menus());
 			$this->load->view('layout/menu',$this->menus());
@@ -1761,7 +2363,7 @@ public function buscar_cliente($txt){
 				
 				array_push($cns_det, $dt_det);
 			}
-			if($rst_cja_sri->cja_envio_sri==1){
+			if($rst_cja_sri->cja_id==1){
                    $tipo ='Factura';
                    $leyenda_pie ='';
                    $doc='pdf_factura';
@@ -1772,6 +2374,26 @@ public function buscar_cliente($txt){
                    $doc='pdf_nota_venta';
 
                }
+
+
+			$rst_iva = $this->configuracion_model->lista_una_configuracion('30');
+
+			$redu_iva = $rst_iva->con_valor;
+			$por_iva = $rst_iva->con_valor2;
+			$cod_iva = $rst_iva->con_valor3;
+
+			$iva = $this->factura_model->lista_impuesto_detalle_factura($id);
+			
+
+			if (empty($iva)) {
+				if($redu_iva==0){          
+					$t_iva= $por_iva;
+				}else{
+					$t_iva= 12;
+				}
+			}else{
+				$t_iva = $iva->iva;
+			}
 
 			$data=array(
 						'ambiente'=>$this->configuracion_model->lista_una_configuracion('5'),
@@ -1784,12 +2406,13 @@ public function buscar_cliente($txt){
 						'tipo'=>$tipo,
 						'leyenda_pie'=>$leyenda_pie,
 						'cns_pag'=>$cns_pag,
+						't_iva'=>$t_iva
 						);
 			$this->html3pdf->filename('factura.pdf');
 			$this->html3pdf->paper('a4', 'portrait');
 			//$this->load->view('pdf/pdf_factura',$data);
     		$this->html3pdf->html(utf8_decode($this->load->view('pdf/'.$doc, $data, true)));
-    		$this->html3pdf->folder($_SERVER['DOCUMENT_ROOT']."/jconstante/pdfs/");
+    		$this->html3pdf->folder($_SERVER['DOCUMENT_ROOT']."/beltran/pdfs/");
             $this->html3pdf->filename($rst->fac_clave_acceso.'.pdf');
             $this->html3pdf->create('save');
             
@@ -1898,6 +2521,26 @@ public function buscar_cliente($txt){
 				array_push($cns_det, $dt_det);
 			}
 
+
+			$rst_iva = $this->configuracion_model->lista_una_configuracion('30');
+
+				$redu_iva = $rst_iva->con_valor;
+				$por_iva = $rst_iva->con_valor2;
+				$cod_iva = $rst_iva->con_valor3;
+
+				$iva = $this->factura_model->lista_impuesto_detalle_factura($id);
+				
+
+				if (empty($iva)) {
+					if($redu_iva==0){          
+						$t_iva= $por_iva;
+					}else{
+						$t_iva= 12;
+					}
+				}else{
+					$t_iva = $iva->iva;
+				}
+
 			$data=array(
 						'ambiente'=>$this->configuracion_model->lista_una_configuracion('5'),
 						'dec'=>$this->configuracion_model->lista_una_configuracion('2'),
@@ -1907,6 +2550,7 @@ public function buscar_cliente($txt){
 						'factura'=>$this->factura_model->lista_una_factura($id),
 						'cns_det'=>$cns_det,
 						'cns_pag'=>$cns_pag,
+						't_iva'=>$t_iva
 						);
 			//$this->html3pdf->filename('talon.pdf');
 			$this->load->view('pdf/pdf_talon', $data);
@@ -2044,7 +2688,7 @@ public function buscar_cliente($txt){
 	}
 
 
-    public function consulta_sri($id,$opc_id,$env){
+  public function consulta_sri($id,$opc_id,$env){
     	$amb=$this->configuracion_model->lista_una_configuracion('5');
 	    $ambiente=$amb->con_valor;
 
@@ -2062,7 +2706,6 @@ public function buscar_cliente($txt){
 	        // Calls
 	        $result = $client->call('autorizacionComprobante', ["claveAccesoComprobante" => $factura->fac_clave_acceso]);
 	        
-	        // print_r($result);
 	        if (empty($result['RespuestaAutorizacionComprobante']['autorizaciones'])) {
 	           $this->generar_xml($factura->fac_id,$env); 
 	        } else {
@@ -2077,15 +2720,16 @@ public function buscar_cliente($txt){
 	            				);
 	            	$this->factura_model->update($factura->fac_id,$data);
 
-	        		$data_xml = array(
+	        		$data_xml = (object) array(
+	        						'ambiente'=>$res['ambiente'], 
+                                    'clave'=>$factura->fac_clave_acceso,
                 					'estado'=>$res['estado'], 
                                     'autorizacion'=>$res['numeroAutorizacion'], 
                 					'fecha'=>$res['fechaAutorizacion'], 
                 					'comprobante'=>$res['comprobante'], 
-                                    'ambiente'=>$res['ambiente'], 
-                                    'clave'=>$factura->fac_clave_acceso,
                                     'descarga'=>$env,
                 				);
+
 	        		$this->generar_xml_autorizado($data_xml,$factura->fac_id,$opc_id); 
 	        	}else{
 	        		$this->generar_xml($factura->fac_id,$env); 
@@ -2095,10 +2739,11 @@ public function buscar_cliente($txt){
 
     }
     
-
-    function generar_xml($id,$d){
+ function generar_xml($id,$d){
     	$amb=$this->configuracion_model->lista_una_configuracion('5');
 	    $ambiente=$amb->con_valor; 
+		// reduccion iva
+		$iva = $this->factura_model->lista_impuesto_detalle_factura($id);
     	if($ambiente!=0){
     	$xml="";    
     	$progr=$this->configuracion_model->lista_una_configuracion('15');
@@ -2183,14 +2828,41 @@ public function buscar_cliente($txt){
             $xml.="<valor>0.00</valor>" . chr(13);
             $xml.="</totalImpuesto>" . chr(13);
         }
-        if ($factura->fac_subtotal12 > 0) {//IVA 12
-            $xml.="<totalImpuesto>" . chr(13);
-            $xml.="<codigo>2</codigo>" . chr(13);
-            $xml.="<codigoPorcentaje>2</codigoPorcentaje>" . chr(13);
-            $xml.="<baseImponible>" . round($factura->fac_subtotal12 + $factura->fac_total_ice,$round) . "</baseImponible>" . chr(13);
-            $xml.="<valor>" . round($factura->fac_total_iva, $round) . "</valor>" . chr(13);
-            $xml.="</totalImpuesto>" . chr(13);
-        }
+        // if ($factura->fac_subtotal12 > 0) {//IVA 12
+        //     $xml.="<totalImpuesto>" . chr(13);
+        //     $xml.="<codigo>2</codigo>" . chr(13);
+        //     $xml.="<codigoPorcentaje>2</codigoPorcentaje>" . chr(13);
+        //     $xml.="<baseImponible>" . round($factura->fac_subtotal12 + $factura->fac_total_ice,$round) . "</baseImponible>" . chr(13);
+        //     $xml.="<valor>" . round($factura->fac_total_iva, $round) . "</valor>" . chr(13);
+        //     $xml.="</totalImpuesto>" . chr(13);
+        // }
+
+		if ($factura->fac_subtotal12 > 0) {//IVA 12
+				
+			$iv_temp = $iva->iva;
+			switch ($iv_temp) {
+	
+				case '8':
+					$coPorc = 8;
+				break;
+	
+				case '12':
+					$coPorc = 2;
+				break;
+	
+				case '14':
+					$coPorc = 3;
+				break;
+				
+			}
+			$xml.="<totalImpuesto>" . chr(13);
+			$xml.="<codigo>2</codigo>" . chr(13);
+			$xml.="<codigoPorcentaje>$coPorc</codigoPorcentaje>" . chr(13);
+			$xml.="<baseImponible>" . round($factura->fac_subtotal12 + $factura->fac_total_ice,$round) . "</baseImponible>" . chr(13);
+			$xml.="<valor>" . round($factura->fac_total_iva, $round) . "</valor>" . chr(13);
+			$xml.="</totalImpuesto>" . chr(13);
+		}
+
         if ($factura->fac_subtotal_no_iva > 0) { //NO OBJ
             $xml.="<totalImpuesto>" . chr(13);
             $xml.="<codigo>2</codigo>" . chr(13);
@@ -2248,11 +2920,37 @@ public function buscar_cliente($txt){
             $xml.="<codigo>2</codigo>" . chr(13);
             $base_imp=$det->dfc_precio_total + $det->dfc_ice;
 
-            if ($det->dfc_iva == '12') {
-                $tarifa = 12;
-                $codPorc = 2;
-                $valo_iva = round( $base_imp * 12 / 100, 2);
-            }
+            // if ($det->dfc_iva == '12') {
+            //     $tarifa = 12;
+            //     $codPorc = 2;
+            //     $valo_iva = round( $base_imp * 12 / 100, 2);
+            // }
+
+
+
+			$codPorc = '';   
+			if ($det->dfc_iva != '0' && $det->dfc_iva != 'EX' && $det->dfc_iva != 'NO') {
+				///iva 12% -- 13% -- 8%, etc
+				$iva_temp = $det->dfc_iva;
+				$tarifa = $iva_temp;
+				switch ($iva_temp) {
+	
+					case '8':
+						$codPorc = 8;
+					break;
+	
+					case '12':
+						$codPorc = 2;
+					break;
+	
+					case '14':
+						$codPorc = 3;
+					break;
+					
+				}
+				
+				$valo_iva = round( $base_imp * $iva_temp / 100, 2);
+			}
 
             if ($det->dfc_iva == '0') {
                 $tarifa = 0;
@@ -2331,7 +3029,6 @@ public function buscar_cliente($txt){
 	            }
         }
 
-
     }
 
     function envio_mail($datos){
@@ -2350,7 +3047,7 @@ public function buscar_cliente($txt){
 
         $this->email->from($cred[3], $cred[5]);
         $correos = str_replace(';',',', strtolower($datos->correo));
-        
+
         $this->email->to($correos);
         $this->email->cc($cred[3]);
 
@@ -2437,7 +3134,7 @@ public function buscar_cliente($txt){
                   <tr>   
                        <td style='font-size:12px'>
                       
-                        <img src='$img_mail' width='20px'>--www.tikvas.com--
+                        <img src='$img_mail' width='20px'>--www.tikvas.com-- 
                         <img src='$img_whatsapp' width='20px'> +593 999404989 / +593 991815559
                         
                       </td>
@@ -2502,7 +3199,6 @@ public function buscar_cliente($txt){
                     'doc_id'=>$rst->fac_id,
                     'cli_id'=>$rst->cli_id,
                     'con_estado'=>'1',
-                    'emp_id'=>$rst->emp_id,
                 );
 
         if ($rst->fac_subtotal12 != 0) {
@@ -2519,7 +3215,6 @@ public function buscar_cliente($txt){
                         'doc_id'=>$rst->fac_id,
                         'cli_id'=>$rst->cli_id,
                         'con_estado'=>'1',
-                        'emp_id'=>$rst->emp_id,
             );
         }
 
@@ -2537,7 +3232,6 @@ public function buscar_cliente($txt){
                         'doc_id'=>$rst->fac_id,
                         'cli_id'=>$rst->cli_id,
                         'con_estado'=>'1',
-                        'emp_id'=>$rst->emp_id,
             );
         }
 
@@ -2555,7 +3249,6 @@ public function buscar_cliente($txt){
                         'doc_id'=>$rst->fac_id,
                         'cli_id'=>$rst->cli_id,
                         'con_estado'=>'1',
-                        'emp_id'=>$rst->emp_id,
             );
         }
 
@@ -2597,7 +3290,6 @@ public function buscar_cliente($txt){
                         'doc_id'=>$rst->cta_id,
                         'cli_id'=>$factura->cli_id,
                         'con_estado'=>'1',
-                        'emp_id'=>$rst->emp_id,
                     );
 
             $this->asiento_model->insert($data);
@@ -2630,14 +3322,14 @@ public function buscar_cliente($txt){
                         'doc_id'=>$rst->doc_id,
                         'cli_id'=>$rst->cli_id,
                         'con_estado'=>'1',
-                        'emp_id'=>$rst->emp_id,
                     );
 
             $this->asiento_model->insert($data);
                    
         }
 
-    } 
+    }  
+
 
     public function show_pdf_2($id,$opc_id,$correo,$etiqueta,$tip){
      	   $email= $this->input->post('email');
@@ -2677,7 +3369,7 @@ public function buscar_cliente($txt){
 			$this->envio_mail($datos_mail);
 			}
     	
-    }   
+    }  
 
     function cambiar_vendedor(){
 
