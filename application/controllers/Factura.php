@@ -2412,7 +2412,7 @@ public function buscar_cliente($txt){
 			$this->html3pdf->paper('a4', 'portrait');
 			//$this->load->view('pdf/pdf_factura',$data);
     		$this->html3pdf->html(utf8_decode($this->load->view('pdf/'.$doc, $data, true)));
-    		$this->html3pdf->folder($_SERVER['DOCUMENT_ROOT']."/beltran/pdfs/");
+    		$this->html3pdf->folder($_SERVER['DOCUMENT_ROOT']."/jconstante/pdfs/");
             $this->html3pdf->filename($rst->fac_clave_acceso.'.pdf');
             $this->html3pdf->create('save');
             
